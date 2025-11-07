@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PopoverMenu } from './components/PopoverMenu';
 import { Sidebar } from './components/Sidebar';
-import { processTextWithGemini } from './services/geminiService';
+import { processTextWithGeminiStream } from './services/geminiService';
 import type { Card, SelectionInfo } from './types';
 
 interface HighlightRect {
@@ -22,16 +22,16 @@ const App: React.FC = () => {
     setHighlightRects([]);
   }, []);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((event: MouseEvent) => {
     const currentSelection = window.getSelection();
+    // Check if the event target is inside an element that should not trigger selection
+    const targetElement = event.target as Element;
+    if (targetElement.closest('[data-no-select="true"]')) {
+      return;
+    }
+
     if (currentSelection && currentSelection.toString().trim().length > 0) {
       const range = currentSelection.getRangeAt(0);
-      
-      // Don't show popover if selection is inside the sidebar or popover itself
-      const selectedElement = range.startContainer.parentElement;
-      if (selectedElement?.closest('[data-no-select="true"]')) {
-        return;
-      }
       
       // Clean up previous highlight before creating a new one.
       clearHighlight();
@@ -77,15 +77,34 @@ const App: React.FC = () => {
     setIsSidebarVisible(true);
     setSelection(null);
 
-    const result = await processTextWithGemini(prompt, context);
-    
-    setCards(prevCards => 
-        prevCards.map(card => 
-            card.id === newCard.id 
-            ? { ...card, status: result.startsWith('An error occurred') ? 'error' : 'success', result } 
+    try {
+      const stream = processTextWithGeminiStream(prompt, context);
+      for await (const chunk of stream) {
+        setCards(prevCards =>
+          prevCards.map(card =>
+            card.id === newCard.id
+              ? { ...card, result: card.result + chunk }
+              : card
+          )
+        );
+      }
+      // Mark as success when stream is complete
+      setCards(prevCards =>
+        prevCards.map(card =>
+          card.id === newCard.id ? { ...card, status: 'success' } : card
+        )
+      );
+    } catch (error) {
+      console.error("Streaming error:", error);
+      const errorMessage = error instanceof Error ? `An error occurred with the AI model: ${error.message}` : "An unknown error occurred.";
+      setCards(prevCards =>
+        prevCards.map(card =>
+          card.id === newCard.id
+            ? { ...card, status: 'error', result: errorMessage }
             : card
         )
-    );
+      );
+    }
   };
 
   const handleDeleteCard = (id: string) => {

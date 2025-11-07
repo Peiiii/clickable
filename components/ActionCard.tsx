@@ -32,9 +32,16 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete }) => {
         </button>
       </div>
       <div className="p-4 text-sm text-gray-200 min-h-[60px]">
-        {card.status === 'loading' && <LoadingSpinner />}
-        {card.status === 'success' && <p className="whitespace-pre-wrap">{card.result}</p>}
-        {card.status === 'error' && <p className="text-red-400">{card.result}</p>}
+        {card.status === 'loading' && !card.result ? (
+            <LoadingSpinner />
+        ) : card.status === 'error' ? (
+            <p className="text-red-400 whitespace-pre-wrap">{card.result}</p>
+        ) : (
+            <p className="whitespace-pre-wrap">
+                {card.result}
+                {card.status === 'loading' && <span className="inline-block w-2 h-4 bg-blue-400 animate-pulse ml-1 align-bottom" />}
+            </p>
+        )}
       </div>
     </div>
   );

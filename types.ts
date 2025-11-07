@@ -1,4 +1,3 @@
-
 export type CardStatus = 'loading' | 'success' | 'error';
 
 export interface Card {
@@ -13,4 +12,12 @@ export interface SelectionInfo {
   text: string;
   x: number;
   y: number;
+}
+
+export interface PredefinedAction {
+  id: string;
+  label: string;
+  prompt: string;
+  icon?: React.ReactNode;
+  isCustom?: boolean;
 }

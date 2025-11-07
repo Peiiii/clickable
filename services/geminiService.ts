@@ -9,9 +9,8 @@ if (!apiKey) {
 
 const ai = new GoogleGenAI({ apiKey: apiKey! });
 
-export async function processTextWithGemini(prompt: string, context: string): Promise<string> {
-  try {
-    const fullPrompt = `Based on the following selected text from a webpage, perform the requested action.
+export async function* processTextWithGeminiStream(prompt: string, context: string): AsyncGenerator<string> {
+  const fullPrompt = `Based on the following selected text from a webpage, perform the requested action.
 
 Selected Text (Context):
 ---
@@ -21,18 +20,19 @@ ${context}
 User's Action/Request: "${prompt}"
 
 Provide a concise and direct response. If the request is for a translation, only provide the translated text.`;
-
-    const response = await ai.models.generateContent({
+  
+  try {
+    const response = await ai.models.generateContentStream({
         model: 'gemini-2.5-flash',
         contents: fullPrompt
     });
 
-    return response.text;
+    for await (const chunk of response) {
+      yield chunk.text;
+    }
   } catch (error) {
     console.error("Error processing text with Gemini:", error);
-    if (error instanceof Error) {
-        return `An error occurred with the AI model: ${error.message}`;
-    }
-    return "An unknown error occurred while contacting the AI.";
+    // Let the caller handle the error state
+    throw error;
   }
 }

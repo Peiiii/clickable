@@ -82,7 +82,8 @@ const App: React.FC = () => {
       let firstChunk = true;
       for await (const chunk of stream) {
         if (firstChunk) {
-            setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, conversation: [{ type: 'ai', text: chunk }] } : c));
+            // FIX: Use 'as const' to prevent TypeScript from widening the type to 'string'.
+            setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, conversation: [{ type: 'ai' as const, text: chunk }] } : c));
             firstChunk = false;
         } else {
             setCards(prev => prev.map(c => {
@@ -93,11 +94,12 @@ const App: React.FC = () => {
             }));
         }
       }
-      setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, status: 'success' } : c));
+      // FIX: Use 'as const' to prevent TypeScript from widening the type to 'string'.
+      setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, status: 'success' as const } : c));
     } catch (error) {
       console.error("Streaming error:", error);
       const errorMessage = error instanceof Error ? `An error occurred: ${error.message}` : "An unknown error occurred.";
-      // FIX: Explicitly cast status and conversation part type to prevent TypeScript from widening them to 'string'.
+      // FIX: Use 'as const' to prevent TypeScript from widening the type to 'string'.
       setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, status: 'error' as const, conversation: [{ type: 'error' as const, text: errorMessage }] } : c));
     }
   };
@@ -108,10 +110,11 @@ const App: React.FC = () => {
         const newCards = prev.map(c => {
             if (c.id === cardId) {
                 cardBeforeFollowUp = c; // Capture state before adding user message
+                // FIX: Use 'as const' to prevent TypeScript from widening types to 'string'.
                 return { 
                     ...c, 
-                    status: 'loading', 
-                    conversation: [...c.conversation, { type: 'user', text: message }]
+                    status: 'loading' as const, 
+                    conversation: [...c.conversation, { type: 'user' as const, text: message }]
                 };
             }
             return c;
@@ -129,7 +132,8 @@ const App: React.FC = () => {
         let firstChunk = true;
         for await (const chunk of stream) {
             if (firstChunk) {
-                setCards(prev => prev.map(c => c.id === cardId ? { ...c, conversation: [...c.conversation, { type: 'ai', text: chunk }] } : c));
+                // FIX: Use 'as const' to prevent TypeScript from widening the type to 'string'.
+                setCards(prev => prev.map(c => c.id === cardId ? { ...c, conversation: [...c.conversation, { type: 'ai' as const, text: chunk }] } : c));
                 firstChunk = false;
             } else {
                 setCards(prev => prev.map(c => {
@@ -140,11 +144,12 @@ const App: React.FC = () => {
                 }));
             }
         }
-        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'success' } : c));
+        // FIX: Use 'as const' to prevent TypeScript from widening the type to 'string'.
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'success' as const } : c));
     } catch (error) {
         console.error("Follow-up error:", error);
         const errorMessage = error instanceof Error ? `An error occurred: ${error.message}` : "An unknown error occurred.";
-        // FIX: Explicitly cast status and conversation part type to prevent TypeScript from widening them to 'string'.
+        // FIX: Use 'as const' to prevent TypeScript from widening the type to 'string'.
         setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'error' as const, conversation: [...c.conversation, { type: 'error' as const, text: errorMessage }] } : c));
     }
   };

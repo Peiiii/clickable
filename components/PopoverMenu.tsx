@@ -14,25 +14,55 @@ const defaultActions: PredefinedAction[] = [
 ];
 
 const CUSTOM_ACTIONS_STORAGE_KEY = 'clickable-custom-actions';
+const ACTION_METADATA_STORAGE_KEY = 'clickable-action-metadata';
+
+// Helper to get usage metadata
+const getActionMetadata = (): Record<string, { lastUsed: number }> => {
+    try {
+        const stored = localStorage.getItem(ACTION_METADATA_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+        console.error("Failed to load action metadata:", e);
+        return {};
+    }
+};
+
+// Helper to sort actions based on metadata
+const sortActions = (actions: PredefinedAction[], metadata: Record<string, { lastUsed: number }>): PredefinedAction[] => {
+    return [...actions].sort((a, b) => {
+        const lastUsedA = metadata[a.id]?.lastUsed ?? 0;
+        const lastUsedB = metadata[b.id]?.lastUsed ?? 0;
+        return lastUsedB - lastUsedA;
+    });
+};
 
 export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, onClose }) => {
   const [customPrompt, setCustomPrompt] = useState('');
-  const [actions, setActions] = useState<PredefinedAction[]>(defaultActions);
+  const [actions, setActions] = useState<PredefinedAction[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newActionLabel, setNewActionLabel] = useState('');
   const [newActionPrompt, setNewActionPrompt] = useState('');
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Load custom actions
+    let customActions: PredefinedAction[] = [];
     try {
       const storedActionsJSON = localStorage.getItem(CUSTOM_ACTIONS_STORAGE_KEY);
       if (storedActionsJSON) {
-        const customActions: PredefinedAction[] = JSON.parse(storedActionsJSON);
-        setActions(prev => [...prev.filter(p => !p.isCustom), ...customActions]);
+        customActions = JSON.parse(storedActionsJSON);
       }
     } catch (e) {
       console.error("Failed to load custom actions:", e);
     }
+    
+    // Load usage metadata
+    const metadata = getActionMetadata();
+    
+    // Combine, sort, and set initial state
+    const allActions = [...defaultActions, ...customActions];
+    const sorted = sortActions(allActions, metadata);
+    setActions(sorted);
   }, []);
 
   useEffect(() => {
@@ -55,13 +85,19 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
     }
   };
 
-  const handlePredefinedAction = (basePrompt: string, context: string) => {
+  const handlePredefinedAction = (action: PredefinedAction, context: string) => {
     const finalPrompt = customPrompt.trim()
-      ? `${basePrompt}. Additional instructions: ${customPrompt}`
-      : basePrompt;
+      ? `${action.prompt}. Additional instructions: ${customPrompt}`
+      : action.prompt;
 
     onAction(finalPrompt, context);
     setCustomPrompt('');
+
+    // Update usage timestamp and re-sort
+    const metadata = getActionMetadata();
+    metadata[action.id] = { lastUsed: Date.now() };
+    localStorage.setItem(ACTION_METADATA_STORAGE_KEY, JSON.stringify(metadata));
+    setActions(prevActions => sortActions(prevActions, metadata));
   };
 
   const handleSaveAction = () => {
@@ -74,11 +110,17 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
       isCustom: true,
     };
     
-    const updatedActions = [...actions, newAction];
-    setActions(updatedActions);
+    // Update custom actions in storage
+    const updatedCustomActions = [...actions.filter(a => a.isCustom), newAction];
+    localStorage.setItem(CUSTOM_ACTIONS_STORAGE_KEY, JSON.stringify(updatedCustomActions));
 
-    const customActions = updatedActions.filter(a => a.isCustom);
-    localStorage.setItem(CUSTOM_ACTIONS_STORAGE_KEY, JSON.stringify(customActions));
+    // Update metadata to put new action first
+    const metadata = getActionMetadata();
+    metadata[newAction.id] = { lastUsed: Date.now() };
+    localStorage.setItem(ACTION_METADATA_STORAGE_KEY, JSON.stringify(metadata));
+
+    // Update state with new action and re-sort
+    setActions(prevActions => sortActions([...prevActions, newAction], metadata));
 
     setNewActionLabel('');
     setNewActionPrompt('');
@@ -89,8 +131,14 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
     const updatedActions = actions.filter(a => a.id !== idToDelete);
     setActions(updatedActions);
     
+    // Update custom actions in storage
     const customActions = updatedActions.filter(a => a.isCustom);
     localStorage.setItem(CUSTOM_ACTIONS_STORAGE_KEY, JSON.stringify(customActions));
+
+    // Update metadata in storage
+    const metadata = getActionMetadata();
+    delete metadata[idToDelete];
+    localStorage.setItem(ACTION_METADATA_STORAGE_KEY, JSON.stringify(metadata));
   };
 
   const popoverStyle: React.CSSProperties = {
@@ -141,7 +189,7 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
               {actions.map(action => (
                 <div key={action.id} className="relative group flex-shrink-0">
                   <button 
-                    onClick={() => handlePredefinedAction(action.prompt, selection.text)} 
+                    onClick={() => handlePredefinedAction(action, selection.text)} 
                     className="flex items-center justify-center gap-2 text-sm bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white px-3 py-2 rounded-md transition-colors"
                   >
                     {action.icon}

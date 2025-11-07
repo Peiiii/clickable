@@ -106,6 +106,7 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
         ref={popoverRef} 
         style={popoverStyle} 
         className="z-50 w-96 bg-gray-900/70 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-2 flex flex-col gap-2 animate-fade-in-down"
+        data-no-select="true"
     >
       <p className="text-xs text-gray-400 italic truncate px-1 pt-1">
         On: "{selection.text}"

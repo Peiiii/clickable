@@ -1,0 +1,5 @@
+{
+  "name": "Clickable AI Assistant",
+  "description": "Select any text on a webpage to bring up a menu of contextual AI actions. Get translations, summaries, and custom results in a convenient sidebar without typing.",
+  "requestFramePermissions": []
+}

@@ -7,11 +7,12 @@ import { SidebarIcon, CloseIcon } from './Icons';
 interface SidebarProps {
   cards: Card[];
   onDeleteCard: (id: string) => void;
+  onFollowUp: (id: string, message: string) => void;
   isVisible: boolean;
   onToggle: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, isVisible, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, onFollowUp, isVisible, onToggle }) => {
   return (
     <>
       <button 
@@ -31,7 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, isVisible
           <div className="flex-grow p-4 overflow-y-auto space-y-4">
             {cards.length > 0 ? (
               cards.map(card => (
-                <ActionCard key={card.id} card={card} onDelete={onDeleteCard} />
+                <ActionCard key={card.id} card={card} onDelete={onDeleteCard} onFollowUp={onFollowUp} />
               ))
             ) : (
               <div className="text-center text-gray-500 pt-10">

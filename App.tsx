@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PopoverMenu } from './components/PopoverMenu';
 import { Sidebar } from './components/Sidebar';
-import { processTextWithGeminiStream } from './services/geminiService';
-import type { Card, SelectionInfo } from './types';
+import { processChatStream } from './services/geminiService';
+import type { Card, SelectionInfo, ConversationPart } from './types';
 
 interface HighlightRect {
   top: number;
@@ -70,7 +70,7 @@ const App: React.FC = () => {
         prompt,
         context,
         status: 'loading',
-        result: '',
+        conversation: [],
     };
 
     setCards(prevCards => [newCard, ...prevCards]);
@@ -78,32 +78,74 @@ const App: React.FC = () => {
     setSelection(null);
 
     try {
-      const stream = processTextWithGeminiStream(prompt, context);
+      const stream = processChatStream(prompt, context, []);
+      let firstChunk = true;
       for await (const chunk of stream) {
-        setCards(prevCards =>
-          prevCards.map(card =>
-            card.id === newCard.id
-              ? { ...card, result: card.result + chunk }
-              : card
-          )
-        );
+        if (firstChunk) {
+            setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, conversation: [{ type: 'ai', text: chunk }] } : c));
+            firstChunk = false;
+        } else {
+            setCards(prev => prev.map(c => {
+                if (c.id !== newCard.id) return c;
+                const newConversation = [...c.conversation];
+                newConversation[newConversation.length - 1].text += chunk;
+                return { ...c, conversation: newConversation };
+            }));
+        }
       }
-      // Mark as success when stream is complete
-      setCards(prevCards =>
-        prevCards.map(card =>
-          card.id === newCard.id ? { ...card, status: 'success' } : card
-        )
-      );
+      setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, status: 'success' } : c));
     } catch (error) {
       console.error("Streaming error:", error);
-      const errorMessage = error instanceof Error ? `An error occurred with the AI model: ${error.message}` : "An unknown error occurred.";
-      setCards(prevCards =>
-        prevCards.map(card =>
-          card.id === newCard.id
-            ? { ...card, status: 'error', result: errorMessage }
-            : card
-        )
-      );
+      const errorMessage = error instanceof Error ? `An error occurred: ${error.message}` : "An unknown error occurred.";
+      // FIX: Explicitly cast status and conversation part type to prevent TypeScript from widening them to 'string'.
+      setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, status: 'error' as const, conversation: [{ type: 'error' as const, text: errorMessage }] } : c));
+    }
+  };
+
+  const handleFollowUp = async (cardId: string, message: string) => {
+    let cardBeforeFollowUp: Card | undefined;
+    setCards(prev => {
+        const newCards = prev.map(c => {
+            if (c.id === cardId) {
+                cardBeforeFollowUp = c; // Capture state before adding user message
+                return { 
+                    ...c, 
+                    status: 'loading', 
+                    conversation: [...c.conversation, { type: 'user', text: message }]
+                };
+            }
+            return c;
+        });
+        return newCards;
+    });
+
+    if (!cardBeforeFollowUp) {
+        console.error("Could not find card for follow-up.");
+        return;
+    }
+    
+    try {
+        const stream = processChatStream(message, cardBeforeFollowUp.context, cardBeforeFollowUp.conversation);
+        let firstChunk = true;
+        for await (const chunk of stream) {
+            if (firstChunk) {
+                setCards(prev => prev.map(c => c.id === cardId ? { ...c, conversation: [...c.conversation, { type: 'ai', text: chunk }] } : c));
+                firstChunk = false;
+            } else {
+                setCards(prev => prev.map(c => {
+                    if (c.id !== cardId) return c;
+                    const newConversation = [...c.conversation];
+                    newConversation[newConversation.length - 1].text += chunk;
+                    return { ...c, conversation: newConversation };
+                }));
+            }
+        }
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'success' } : c));
+    } catch (error) {
+        console.error("Follow-up error:", error);
+        const errorMessage = error instanceof Error ? `An error occurred: ${error.message}` : "An unknown error occurred.";
+        // FIX: Explicitly cast status and conversation part type to prevent TypeScript from widening them to 'string'.
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: 'error' as const, conversation: [...c.conversation, { type: 'error' as const, text: errorMessage }] } : c));
     }
   };
 
@@ -165,7 +207,7 @@ const App: React.FC = () => {
       {selection && <PopoverMenu selection={selection} onAction={handleAction} onClose={handleClosePopover} />}
       
       <div data-no-select="true">
-        <Sidebar cards={cards} onDeleteCard={handleDeleteCard} isVisible={isSidebarVisible} onToggle={handleToggleSidebar}/>
+        <Sidebar cards={cards} onDeleteCard={handleDeleteCard} onFollowUp={handleFollowUp} isVisible={isSidebarVisible} onToggle={handleToggleSidebar}/>
       </div>
 
        <style>{`

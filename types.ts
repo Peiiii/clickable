@@ -1,10 +1,15 @@
 export type CardStatus = 'loading' | 'success' | 'error';
 
+export interface ConversationPart {
+  type: 'ai' | 'user' | 'error';
+  text: string;
+}
+
 export interface Card {
   id: string;
   prompt: string;
   status: CardStatus;
-  result: string;
+  conversation: ConversationPart[];
   context: string;
 }
 

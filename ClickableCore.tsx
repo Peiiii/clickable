@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { PopoverMenu } from './components/PopoverMenu';
 import { Sidebar } from './components/Sidebar';
@@ -12,11 +11,7 @@ interface HighlightRect {
   height: number;
 }
 
-interface ClickableCoreProps {
-  children: React.ReactNode;
-}
-
-export const ClickableCore: React.FC<ClickableCoreProps> = ({ children }) => {
+export const ClickableCore: React.FC = () => {
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -172,7 +167,7 @@ export const ClickableCore: React.FC<ClickableCoreProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200 font-sans p-8 relative">
+    <>
       {highlightRects.map((rect, i) => (
         <div
           key={i}
@@ -190,8 +185,6 @@ export const ClickableCore: React.FC<ClickableCoreProps> = ({ children }) => {
         />
       ))}
       
-      {children}
-
       {selection && <PopoverMenu selection={selection} onAction={handleAction} onClose={handleClosePopover} />}
       
       <div data-no-select="true">
@@ -211,6 +204,6 @@ export const ClickableCore: React.FC<ClickableCoreProps> = ({ children }) => {
           }
           .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
        `}</style>
-    </div>
+    </>
   );
 };

@@ -21,18 +21,20 @@ export const Sidebar: React.FC = () => {
 
       <div className={`fixed top-0 right-0 h-full w-[360px] bg-black/30 backdrop-blur-xl border-l border-gray-800 shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full">
-          <header className="p-4 border-b border-gray-800 flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-100">Clickable AI</h2>
-              <p className="text-sm text-gray-400">Your AI-powered actions</p>
+          <header className="p-4 border-b border-gray-800">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-100">Clickable AI</h2>
+                <p className="text-sm text-gray-400">Your AI-powered actions</p>
+              </div>
+              <button
+                onClick={clickableManager.handleNewAgentCard}
+                className="p-2 rounded-full bg-blue-600/50 hover:bg-blue-500 text-white transition-colors"
+                title="New Agent Chat"
+              >
+                <PlusIcon className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={clickableManager.handleNewAgentCard}
-              className="p-2 rounded-full bg-blue-600/50 hover:bg-blue-500 text-white transition-colors"
-              title="New Agent Chat"
-            >
-              <PlusIcon className="w-5 h-5" />
-            </button>
           </header>
           <div className="flex-grow p-4 overflow-y-auto space-y-4">
             {cards.length > 0 ? (

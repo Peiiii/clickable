@@ -117,7 +117,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card }) => {
     };
     
     const icon = card.icon || <SparklesIcon className="w-4 h-4" />;
-    const isConversational = card.type === 'ai' || card.type === 'agent';
+    const isConversational = card.type === 'agent';
 
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg shadow-lg flex flex-col animate-fade-in-up max-h-[90vh]">

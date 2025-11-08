@@ -2,7 +2,7 @@
 import React from 'react';
 
 export type CardStatus = 'loading' | 'success' | 'error';
-export type CardType = 'ai' | 'code' | 'ai-code' | 'agent';
+export type CardType = 'code' | 'ai-code' | 'agent';
 export type ActionType = 'ai' | 'code' | 'dom-code';
 
 // New types for Grounding
@@ -65,5 +65,44 @@ export interface PredefinedAction {
   handler?: (context: string) => string | number; // For simple, non-DOM code
   icon?: React.ReactNode;
   isCustom?: boolean;
-  useTools?: boolean;
+}
+
+// --- AI Provider Abstraction ---
+
+export enum ParamType {
+    STRING = 'string',
+    NUMBER = 'number',
+    OBJECT = 'object',
+    BOOLEAN = 'boolean',
+    ARRAY = 'array',
+}
+
+export interface ToolParameter {
+    type: ParamType;
+    description: string;
+    properties?: Record<string, ToolParameter>;
+    items?: ToolParameter;
+    required?: string[];
+}
+
+export interface AbstractTool {
+    name: string;
+    description: string;
+    parameters: ToolParameter;
+}
+
+export interface GroundingTool {
+    googleSearch: {};
+}
+
+export type AgentTool = AbstractTool | GroundingTool;
+
+
+export type AgentStreamResult = 
+    | { type: 'text', payload: string }
+    | { type: 'tool_call', payload: PendingToolCall };
+
+export interface AIProvider {
+  processAgentStream(conversation: ConversationPart[], tools: AgentTool[]): AsyncGenerator<AgentStreamResult>;
+  generateCode(prompt: string, context: string): Promise<string>;
 }

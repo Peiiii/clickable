@@ -18,7 +18,6 @@ const defaultActions: PredefinedAction[] = [
     icon: <SearchIcon className="w-4 h-4" />,
     prompt: 'Using information from Google Search, provide a comprehensive answer for the following query',
     isCustom: false,
-    useTools: true,
   },
   { 
     id: 'word-count', 
@@ -112,12 +111,7 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = () => {
     e.preventDefault();
     const trimmedPrompt = customPrompt.trim();
     if (trimmedPrompt) {
-      if (trimmedPrompt.startsWith('/agent ')) {
-        const agentPrompt = trimmedPrompt.substring(7); // remove '/agent '
-        clickableManager.handleAgentAction(agentPrompt, context);
-      } else {
-        clickableManager.handleAction(trimmedPrompt, context);
-      }
+      clickableManager.handleAgentAction(trimmedPrompt, context);
       setCustomPrompt('');
     }
   };
@@ -128,16 +122,11 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = () => {
         clickableManager.handleCodeAction(action.label, context, result, action.icon);
     } else if (action.type === 'dom-code') {
         clickableManager.handleDomCodeAction(action);
-    } else if (action.type === 'ai' && action.prompt) {
+    } else if (action.prompt) { // Covers type 'ai' and legacy custom actions with a prompt
         const finalPrompt = customPrompt.trim()
           ? `${action.prompt}. Additional instructions: ${customPrompt}`
           : action.prompt;
-        clickableManager.handleAction(finalPrompt, context, action.icon, action.useTools);
-    } else if (action.prompt) { // Fallback for old custom actions without a type
-        const finalPrompt = customPrompt.trim()
-            ? `${action.prompt}. Additional instructions: ${customPrompt}`
-            : action.prompt;
-        clickableManager.handleAction(finalPrompt, context, action.icon, action.useTools);
+        clickableManager.handleAgentAction(finalPrompt, context, action.icon);
     }
     
     setCustomPrompt('');
@@ -263,7 +252,7 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = () => {
               type="text"
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="Ask AI, or start with /agent ..."
+              placeholder="Ask the agent..."
               className="flex-1 bg-gray-800 text-gray-200 placeholder-gray-500 text-sm px-3 py-2 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />

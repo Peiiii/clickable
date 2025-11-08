@@ -1,9 +1,10 @@
 import React from 'react';
 import { useClickableStore } from '../stores/clickableStore';
-import { processChatStream, generateWithTools, generateCode, processAgentStream } from '../services/agentService';
+import { agentTools } from '../services/agentConfig';
 import { readPageContent, executeDomModificationCode, saveDomCodeAction } from '../services/toolService';
-import type { Card, SelectionInfo, GroundingChunk, PredefinedAction, ConversationPart, HighlightRect } from '../types';
+import type { Card, PredefinedAction, ConversationPart } from '../types';
 import { CodeIcon, SparklesIcon } from '../components/Icons';
+import { providers } from '../services/ai/providers';
 
 export class ClickableManager {
 
@@ -53,64 +54,6 @@ export class ClickableManager {
     this.clearHighlight();
   };
   
-  handleAction = async (prompt: string, context: string, icon?: React.ReactNode, useTools?: boolean) => {
-    this.handleClosePopover();
-    const newCard: Card = {
-      id: crypto.randomUUID(),
-      prompt,
-      context,
-      type: 'ai',
-      status: 'loading',
-      conversation: [],
-      icon,
-    };
-    useClickableStore.getState().addCard(newCard);
-    useClickableStore.getState().setSidebarVisible(true);
-    
-    if (useTools) {
-      try {
-        const response = await generateWithTools(prompt, context);
-        const text = response.text;
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
-        
-        useClickableStore.getState().updateCard(newCard.id, {
-            status: 'success',
-            conversation: [{ type: 'ai', text }],
-            grounding: groundingChunks
-        });
-
-      } catch (error) {
-        console.error("Tool-based generation error:", error);
-        const errorMessage = error instanceof Error ? `An error occurred: ${error.message}` : "An unknown error occurred.";
-        useClickableStore.getState().updateCard(newCard.id, { status: 'error', conversation: [{ type: 'error', text: errorMessage }] });
-      }
-    } else {
-      try {
-        const stream = processChatStream(prompt, context, []);
-        let firstChunk = true;
-        for await (const chunk of stream) {
-          if (firstChunk) {
-              useClickableStore.getState().updateCard(newCard.id, { conversation: [{ type: 'ai', text: chunk }] });
-              firstChunk = false;
-          } else {
-              const { cards } = useClickableStore.getState();
-              const card = cards.find(c => c.id === newCard.id);
-              if (card) {
-                const newConversation = [...card.conversation];
-                newConversation[newConversation.length - 1].text += chunk;
-                useClickableStore.getState().updateCard(newCard.id, { conversation: newConversation });
-              }
-          }
-        }
-        useClickableStore.getState().updateCard(newCard.id, { status: 'success' });
-      } catch (error) {
-        console.error("Streaming error:", error);
-        const errorMessage = error instanceof Error ? `An error occurred: ${error.message}` : "An unknown error occurred.";
-        useClickableStore.getState().updateCard(newCard.id, { status: 'error', conversation: [{ type: 'error', text: errorMessage }] });
-      }
-    }
-  };
-  
   handleAiCodeAction = async (prompt: string, context: string) => {
     this.handleClosePopover();
     const newCard: Card = {
@@ -126,7 +69,9 @@ export class ClickableManager {
     useClickableStore.getState().setSidebarVisible(true);
 
     try {
-      const generatedCode = await generateCode(prompt, context);
+      const provider = providers['gemini'].instance;
+      const generatedCode = await provider.generateCode(prompt, context);
+      
       try {
         const func = new Function('context', generatedCode);
         const result = func(context);
@@ -167,8 +112,9 @@ export class ClickableManager {
   runAgentTurn = async (card: Card) => {
     useClickableStore.getState().updateCard(card.id, { status: 'loading' });
     
+    const provider = providers['gemini'].instance;
     const history = [{ type: 'system' as const, text: card.context }, ...card.conversation];
-    const stream = processAgentStream(history);
+    const stream = provider.processAgentStream(history, agentTools);
 
     let finalAiText = '';
     
@@ -218,7 +164,7 @@ export class ClickableManager {
     useClickableStore.getState().updateCard(card.id, { status: 'success' });
   };
 
-  handleAgentAction = (prompt: string, context: string) => {
+  handleAgentAction = (prompt: string, context: string, icon?: React.ReactNode) => {
     this.handleClosePopover();
     const newCard: Card = {
       id: crypto.randomUUID(),
@@ -227,7 +173,7 @@ export class ClickableManager {
       type: 'agent',
       status: 'loading',
       conversation: [{ type: 'user', text: prompt }],
-      icon: React.createElement(SparklesIcon),
+      icon: icon || React.createElement(SparklesIcon),
       selectionRange: useClickableStore.getState().lastSelectionRange?.cloneRange(),
     };
     useClickableStore.getState().addCard(newCard);
@@ -262,40 +208,6 @@ export class ClickableManager {
   
     if (updatedCard.type === 'agent') {
       this.runAgentTurn(updatedCard);
-      return;
-    }
-
-    if (updatedCard) {
-        try {
-            const stream = processChatStream(message, updatedCard.context, updatedCard.conversation);
-            let firstChunk = true;
-            for await (const chunk of stream) {
-                const currentCard = useClickableStore.getState().cards.find(c => c.id === cardId);
-                if (!currentCard) return;
-
-                if (firstChunk) {
-                    useClickableStore.getState().updateCard(cardId, {
-                        conversation: [...currentCard.conversation, { type: 'ai', text: chunk }]
-                    });
-                    firstChunk = false;
-                } else {
-                    const newConversation = [...currentCard.conversation];
-                    newConversation[newConversation.length - 1].text += chunk;
-                    useClickableStore.getState().updateCard(cardId, { conversation: newConversation });
-                }
-            }
-            useClickableStore.getState().updateCard(cardId, { status: 'success' });
-        } catch (error) {
-            console.error("Follow-up error:", error);
-            const errorMessage = error instanceof Error ? `An error occurred: ${error.message}` : "An unknown error occurred.";
-            const currentCard = useClickableStore.getState().cards.find(c => c.id === cardId);
-            if(currentCard) {
-                useClickableStore.getState().updateCard(cardId, {
-                    status: 'error',
-                    conversation: [...currentCard.conversation, { type: 'error', text: errorMessage }]
-                });
-            }
-        }
     }
   };
 

@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { SelectionInfo, PredefinedAction } from '../types';
+import type { PredefinedAction } from '../types';
 import { TranslateIcon, SummarizeIcon, SendIcon, PlusIcon, TrashIcon, HashtagIcon, SearchIcon, CodeIcon, SparklesIcon } from './Icons';
+import { usePresenter } from '../context/PresenterContext';
+import { useClickableStore } from '../stores/clickableStore';
 
 interface PopoverMenuProps {
-  selection: SelectionInfo;
-  onAction: (prompt: string, context: string, icon?: React.ReactNode, useTools?: boolean) => void;
-  onCodeAction: (label: string, context: string, result: string | number, icon?: React.ReactNode) => void;
-  onDomCodeAction: (action: PredefinedAction) => void;
-  onAiCodeAction: (prompt: string, context: string) => void;
-  onAgentAction: (prompt: string, context: string) => void;
-  onClose: () => void;
+  // No props needed, will get state from store and actions from presenter
 }
 
 const defaultActions: PredefinedAction[] = [
@@ -57,7 +53,10 @@ const sortActions = (actions: PredefinedAction[], metadata: Record<string, { las
     });
 };
 
-export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, onCodeAction, onDomCodeAction, onAiCodeAction, onAgentAction, onClose }) => {
+export const PopoverMenu: React.FC<PopoverMenuProps> = () => {
+  const { clickableManager } = usePresenter();
+  const selection = useClickableStore((state) => state.selection);
+
   const [customPrompt, setCustomPrompt] = useState('');
   const [actions, setActions] = useState<PredefinedAction[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -100,14 +99,14 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        onClose();
+        clickableManager.handleClosePopover();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [onClose]);
+  }, [clickableManager]);
 
   const handleCustomSubmit = (e: React.FormEvent, context: string) => {
     e.preventDefault();
@@ -115,9 +114,9 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
     if (trimmedPrompt) {
       if (trimmedPrompt.startsWith('/agent ')) {
         const agentPrompt = trimmedPrompt.substring(7); // remove '/agent '
-        onAgentAction(agentPrompt, context);
+        clickableManager.handleAgentAction(agentPrompt, context);
       } else {
-        onAction(trimmedPrompt, context);
+        clickableManager.handleAction(trimmedPrompt, context);
       }
       setCustomPrompt('');
     }
@@ -126,19 +125,19 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
   const handlePredefinedAction = (action: PredefinedAction, context: string) => {
     if (action.type === 'code' && action.handler) {
         const result = action.handler(context);
-        onCodeAction(action.label, context, result, action.icon);
+        clickableManager.handleCodeAction(action.label, context, result, action.icon);
     } else if (action.type === 'dom-code') {
-        onDomCodeAction(action);
+        clickableManager.handleDomCodeAction(action);
     } else if (action.type === 'ai' && action.prompt) {
         const finalPrompt = customPrompt.trim()
           ? `${action.prompt}. Additional instructions: ${customPrompt}`
           : action.prompt;
-        onAction(finalPrompt, context, action.icon, action.useTools);
+        clickableManager.handleAction(finalPrompt, context, action.icon, action.useTools);
     } else if (action.prompt) { // Fallback for old custom actions without a type
         const finalPrompt = customPrompt.trim()
             ? `${action.prompt}. Additional instructions: ${customPrompt}`
             : action.prompt;
-        onAction(finalPrompt, context, action.icon, action.useTools);
+        clickableManager.handleAction(finalPrompt, context, action.icon, action.useTools);
     }
     
     setCustomPrompt('');
@@ -190,6 +189,8 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
     delete metadata[idToDelete];
     localStorage.setItem(ACTION_METADATA_STORAGE_KEY, JSON.stringify(metadata));
   };
+
+  if (!selection) return null;
 
   const popoverStyle: React.CSSProperties = {
     position: 'absolute',

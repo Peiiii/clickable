@@ -1,27 +1,11 @@
 import React from 'react';
 import { PopoverMenu } from './components/PopoverMenu';
 import { Sidebar } from './components/Sidebar';
-import { useClickable } from './useClickable';
+import { useClickableStore } from './stores/clickableStore';
 
 export const ClickableCore: React.FC = () => {
-  const {
-    selection,
-    cards,
-    isSidebarVisible,
-    highlightRects,
-    handleAction,
-    handleAiCodeAction,
-    handleCodeAction,
-    handleDomCodeAction,
-    handleAgentAction,
-    handleClosePopover,
-    handleDeleteCard,
-    handleFollowUp,
-    handleToggleSidebar,
-    handleApproveToolCall,
-    handleDenyToolCall,
-    handleNewAgentCard,
-  } = useClickable();
+  const selection = useClickableStore((state) => state.selection);
+  const highlightRects = useClickableStore((state) => state.highlightRects);
 
   return (
     <>
@@ -42,27 +26,10 @@ export const ClickableCore: React.FC = () => {
         />
       ))}
       
-      {selection && <PopoverMenu 
-          selection={selection} 
-          onAction={handleAction} 
-          onCodeAction={handleCodeAction}
-          onDomCodeAction={handleDomCodeAction}
-          onAiCodeAction={handleAiCodeAction}
-          onAgentAction={handleAgentAction}
-          onClose={handleClosePopover} 
-      />}
+      {selection && <PopoverMenu />}
       
       <div data-no-select="true">
-        <Sidebar 
-          cards={cards} 
-          onDeleteCard={handleDeleteCard} 
-          onFollowUp={handleFollowUp} 
-          isVisible={isSidebarVisible} 
-          onToggle={handleToggleSidebar}
-          onApproveToolCall={handleApproveToolCall}
-          onDenyToolCall={handleDenyToolCall}
-          onNewAgentCard={handleNewAgentCard}
-        />
+        <Sidebar />
       </div>
 
        <style>{`

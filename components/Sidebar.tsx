@@ -1,26 +1,18 @@
-
-
 import React from 'react';
-import type { Card } from '../types';
 import { ActionCard } from './ActionCard';
 import { SidebarIcon, CloseIcon, PlusIcon } from './Icons';
+import { useClickableStore } from '../stores/clickableStore';
+import { usePresenter } from '../context/PresenterContext';
 
-interface SidebarProps {
-  cards: Card[];
-  onDeleteCard: (id: string) => void;
-  onFollowUp: (id: string, message: string) => void;
-  isVisible: boolean;
-  onToggle: () => void;
-  onApproveToolCall: (cardId: string) => void;
-  onDenyToolCall: (cardId: string) => void;
-  onNewAgentCard: () => void;
-}
+export const Sidebar: React.FC = () => {
+  const { clickableManager } = usePresenter();
+  const cards = useClickableStore((state) => state.cards);
+  const isVisible = useClickableStore((state) => state.isSidebarVisible);
 
-export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, onFollowUp, isVisible, onToggle, onApproveToolCall, onDenyToolCall, onNewAgentCard }) => {
   return (
     <>
       <button 
-        onClick={onToggle} 
+        onClick={clickableManager.handleToggleSidebar} 
         className={`fixed top-4 z-50 p-2 rounded-full bg-gray-800/80 backdrop-blur-sm border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500 transition-all duration-300 ${isVisible ? 'right-[380px]' : 'right-4'}`}
         aria-label={isVisible ? 'Close Sidebar' : 'Open Sidebar'}
       >
@@ -35,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, onFollowU
               <p className="text-sm text-gray-400">Your AI-powered actions</p>
             </div>
             <button
-              onClick={onNewAgentCard}
+              onClick={clickableManager.handleNewAgentCard}
               className="p-2 rounded-full bg-blue-600/50 hover:bg-blue-500 text-white transition-colors"
               title="New Agent Chat"
             >
@@ -47,11 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, onFollowU
               cards.map(card => (
                 <ActionCard 
                   key={card.id} 
-                  card={card} 
-                  onDelete={onDeleteCard} 
-                  onFollowUp={onFollowUp}
-                  onApproveToolCall={onApproveToolCall}
-                  onDenyToolCall={onDenyToolCall}
+                  card={card}
                 />
               ))
             ) : (

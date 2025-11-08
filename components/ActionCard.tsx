@@ -1,13 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Card, PendingToolCall, ConversationPart } from '../types';
 import { CloseIcon, SparklesIcon, SendIcon, ShieldCheckIcon, ChevronDownIcon } from './Icons';
+import { usePresenter } from '../context/PresenterContext';
 
 interface ActionCardProps {
   card: Card;
-  onDelete: (id: string) => void;
-  onFollowUp: (id: string, message: string) => void;
-  onApproveToolCall: (cardId: string) => void;
-  onDenyToolCall: (cardId: string) => void;
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -94,7 +91,8 @@ const ExecutedToolCard: React.FC<{ part: ConversationPart }> = ({ part }) => {
 };
 
 
-export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollowUp, onApproveToolCall, onDenyToolCall }) => {
+export const ActionCard: React.FC<ActionCardProps> = ({ card }) => {
+    const { clickableManager } = usePresenter();
     const [followUpMessage, setFollowUpMessage] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -113,7 +111,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
     const handleFollowUpSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (followUpMessage.trim() && card.status !== 'loading' && !card.pendingToolCall) {
-            onFollowUp(card.id, followUpMessage.trim());
+            clickableManager.handleFollowUp(card.id, followUpMessage.trim());
             setFollowUpMessage('');
         }
     };
@@ -134,7 +132,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
                       <p className="text-xs text-gray-400 mt-1 italic truncate max-w-xs">"{card.context}"</p>
                     )}
                 </div>
-                <button onClick={() => onDelete(card.id)} className="text-gray-500 hover:text-white transition-colors p-1 -mt-1 -mr-1">
+                <button onClick={() => clickableManager.handleDeleteCard(card.id)} className="text-gray-500 hover:text-white transition-colors p-1 -mt-1 -mr-1">
                     <CloseIcon className="w-4 h-4" />
                 </button>
             </div>
@@ -218,8 +216,8 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
             {card.type === 'agent' && card.pendingToolCall && (
                 <PendingToolCallCard 
                     toolCall={card.pendingToolCall}
-                    onApprove={() => onApproveToolCall(card.id)}
-                    onDeny={() => onDenyToolCall(card.id)}
+                    onApprove={() => clickableManager.handleApproveToolCall(card.id)}
+                    onDeny={() => clickableManager.handleDenyToolCall(card.id)}
                 />
             )}
 

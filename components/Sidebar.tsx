@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import type { Card } from '../types';
 import { ActionCard } from './ActionCard';
-import { SidebarIcon, CloseIcon } from './Icons';
+import { SidebarIcon, CloseIcon, PlusIcon } from './Icons';
 
 interface SidebarProps {
   cards: Card[];
@@ -10,9 +11,12 @@ interface SidebarProps {
   onFollowUp: (id: string, message: string) => void;
   isVisible: boolean;
   onToggle: () => void;
+  onApproveToolCall: (cardId: string) => void;
+  onDenyToolCall: (cardId: string) => void;
+  onNewAgentCard: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, onFollowUp, isVisible, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, onFollowUp, isVisible, onToggle, onApproveToolCall, onDenyToolCall, onNewAgentCard }) => {
   return (
     <>
       <button 
@@ -25,19 +29,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ cards, onDeleteCard, onFollowU
 
       <div className={`fixed top-0 right-0 h-full w-[360px] bg-black/30 backdrop-blur-xl border-l border-gray-800 shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full">
-          <header className="p-4 border-b border-gray-800">
-            <h2 className="text-lg font-semibold text-gray-100">Clickable AI</h2>
-            <p className="text-sm text-gray-400">Your AI-powered actions</p>
+          <header className="p-4 border-b border-gray-800 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-100">Clickable AI</h2>
+              <p className="text-sm text-gray-400">Your AI-powered actions</p>
+            </div>
+            <button
+              onClick={onNewAgentCard}
+              className="p-2 rounded-full bg-blue-600/50 hover:bg-blue-500 text-white transition-colors"
+              title="New Agent Chat"
+            >
+              <PlusIcon className="w-5 h-5" />
+            </button>
           </header>
           <div className="flex-grow p-4 overflow-y-auto space-y-4">
             {cards.length > 0 ? (
               cards.map(card => (
-                <ActionCard key={card.id} card={card} onDelete={onDeleteCard} onFollowUp={onFollowUp} />
+                <ActionCard 
+                  key={card.id} 
+                  card={card} 
+                  onDelete={onDeleteCard} 
+                  onFollowUp={onFollowUp}
+                  onApproveToolCall={onApproveToolCall}
+                  onDenyToolCall={onDenyToolCall}
+                />
               ))
             ) : (
               <div className="text-center text-gray-500 pt-10">
                 <p>No actions yet.</p>
-                <p className="text-sm mt-1">Select text on the page to begin.</p>
+                <p className="text-sm mt-1">Select text on the page or start a new chat.</p>
               </div>
             )}
           </div>

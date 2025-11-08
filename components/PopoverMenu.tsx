@@ -1,17 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { SelectionInfo, PredefinedAction } from '../types';
-import { TranslateIcon, SummarizeIcon, SendIcon, PlusIcon, TrashIcon, HashtagIcon } from './Icons';
+import { TranslateIcon, SummarizeIcon, SendIcon, PlusIcon, TrashIcon, HashtagIcon, SearchIcon, CodeIcon, SparklesIcon } from './Icons';
 
 interface PopoverMenuProps {
   selection: SelectionInfo;
-  onAction: (prompt: string, context: string, icon?: React.ReactNode) => void;
+  onAction: (prompt: string, context: string, icon?: React.ReactNode, useTools?: boolean) => void;
   onCodeAction: (label: string, context: string, result: string | number, icon?: React.ReactNode) => void;
+  onDomCodeAction: (action: PredefinedAction) => void;
+  onAiCodeAction: (prompt: string, context: string) => void;
+  onAgentAction: (prompt: string, context: string) => void;
   onClose: () => void;
 }
 
 const defaultActions: PredefinedAction[] = [
   { id: 'translate-en', type: 'ai', label: 'Translate (EN)', icon: <TranslateIcon className="w-4 h-4" />, prompt: 'Translate the following text to English', isCustom: false },
   { id: 'summarize', type: 'ai', label: 'Summarize', icon: <SummarizeIcon className="w-4 h-4" />, prompt: 'Summarize the following text concisely', isCustom: false },
+  {
+    id: 'smart-search',
+    type: 'ai',
+    label: 'Smart Search',
+    icon: <SearchIcon className="w-4 h-4" />,
+    prompt: 'Using information from Google Search, provide a comprehensive answer for the following query',
+    isCustom: false,
+    useTools: true,
+  },
   { 
     id: 'word-count', 
     type: 'code', 
@@ -45,7 +57,7 @@ const sortActions = (actions: PredefinedAction[], metadata: Record<string, { las
     });
 };
 
-export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, onCodeAction, onClose }) => {
+export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, onCodeAction, onDomCodeAction, onAiCodeAction, onAgentAction, onClose }) => {
   const [customPrompt, setCustomPrompt] = useState('');
   const [actions, setActions] = useState<PredefinedAction[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -68,11 +80,22 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
     // Load usage metadata
     const metadata = getActionMetadata();
     
-    // Combine, sort, and set initial state
-    const allActions = [...defaultActions, ...customActions];
+    // Combine, assign default icons to custom actions, sort, and set state
+    const allActions = [
+      ...defaultActions, 
+      ...customActions.map(a => {
+        if (a.isCustom && !a.icon) {
+          if (a.type === 'dom-code' || a.type === 'code') {
+            return { ...a, icon: <CodeIcon className="w-4 h-4"/> };
+          }
+          return { ...a, icon: <SparklesIcon className="w-4 h-4"/> };
+        }
+        return a;
+      })
+    ];
     const sorted = sortActions(allActions, metadata);
     setActions(sorted);
-  }, []);
+  }, [isAdding]); // Re-run when a new action is added
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,8 +111,14 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
 
   const handleCustomSubmit = (e: React.FormEvent, context: string) => {
     e.preventDefault();
-    if (customPrompt.trim()) {
-      onAction(customPrompt, context);
+    const trimmedPrompt = customPrompt.trim();
+    if (trimmedPrompt) {
+      if (trimmedPrompt.startsWith('/agent ')) {
+        const agentPrompt = trimmedPrompt.substring(7); // remove '/agent '
+        onAgentAction(agentPrompt, context);
+      } else {
+        onAction(trimmedPrompt, context);
+      }
       setCustomPrompt('');
     }
   };
@@ -98,16 +127,18 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
     if (action.type === 'code' && action.handler) {
         const result = action.handler(context);
         onCodeAction(action.label, context, result, action.icon);
+    } else if (action.type === 'dom-code') {
+        onDomCodeAction(action);
     } else if (action.type === 'ai' && action.prompt) {
         const finalPrompt = customPrompt.trim()
           ? `${action.prompt}. Additional instructions: ${customPrompt}`
           : action.prompt;
-        onAction(finalPrompt, context, action.icon);
+        onAction(finalPrompt, context, action.icon, action.useTools);
     } else if (action.prompt) { // Fallback for old custom actions without a type
         const finalPrompt = customPrompt.trim()
             ? `${action.prompt}. Additional instructions: ${customPrompt}`
             : action.prompt;
-        onAction(finalPrompt, context, action.icon);
+        onAction(finalPrompt, context, action.icon, action.useTools);
     }
     
     setCustomPrompt('');
@@ -130,17 +161,18 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
       isCustom: true,
     };
     
-    // Update custom actions in storage
-    const updatedCustomActions = [...actions.filter(a => a.isCustom), newAction];
-    localStorage.setItem(CUSTOM_ACTIONS_STORAGE_KEY, JSON.stringify(updatedCustomActions));
+    let customActions: PredefinedAction[] = [];
+    try {
+        const stored = localStorage.getItem(CUSTOM_ACTIONS_STORAGE_KEY);
+        if (stored) customActions = JSON.parse(stored);
+    } catch(e) { console.error(e); }
 
-    // Update metadata to put new action first
+    customActions.push(newAction);
+    localStorage.setItem(CUSTOM_ACTIONS_STORAGE_KEY, JSON.stringify(customActions));
+
     const metadata = getActionMetadata();
     metadata[newAction.id] = { lastUsed: Date.now() };
     localStorage.setItem(ACTION_METADATA_STORAGE_KEY, JSON.stringify(metadata));
-
-    // Update state with new action and re-sort
-    setActions(prevActions => sortActions([...prevActions, newAction], metadata));
 
     setNewActionLabel('');
     setNewActionPrompt('');
@@ -151,11 +183,9 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
     const updatedActions = actions.filter(a => a.id !== idToDelete);
     setActions(updatedActions);
     
-    // Update custom actions in storage
     const customActions = updatedActions.filter(a => a.isCustom);
     localStorage.setItem(CUSTOM_ACTIONS_STORAGE_KEY, JSON.stringify(customActions));
 
-    // Update metadata in storage
     const metadata = getActionMetadata();
     delete metadata[idToDelete];
     localStorage.setItem(ACTION_METADATA_STORAGE_KEY, JSON.stringify(metadata));
@@ -232,11 +262,11 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
               type="text"
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="Add details or a custom action..."
+              placeholder="Ask AI, or start with /agent ..."
               className="flex-1 bg-gray-800 text-gray-200 placeholder-gray-500 text-sm px-3 py-2 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
-            <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={!customPrompt.trim()}>
+            <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={!customPrompt.trim()} title="Send to AI">
                 <SendIcon className="w-5 h-5"/>
             </button>
           </form>

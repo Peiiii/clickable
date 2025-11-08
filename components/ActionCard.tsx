@@ -31,6 +31,8 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
             setFollowUpMessage('');
         }
     };
+    
+    const icon = card.icon || <SparklesIcon className="w-4 h-4" />;
 
     return (
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg shadow-lg flex flex-col animate-fade-in-up">
@@ -38,7 +40,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
             <div className="p-3 border-b border-gray-700 flex justify-between items-start">
                 <div>
                     <p className="text-sm font-medium text-blue-300 flex items-center gap-2">
-                        <SparklesIcon className="w-4 h-4" />
+                        {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
                         <span>{card.prompt}</span>
                     </p>
                     <p className="text-xs text-gray-400 mt-1 italic truncate max-w-xs">"{card.context}"</p>
@@ -75,30 +77,39 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
                                 <p className="whitespace-pre-wrap">{part.text}</p>
                             </div>
                         )}
+                         {part.type === 'system' && (
+                            <div>
+                                 <div className="inline-block p-2 rounded-lg bg-gray-700/50">
+                                    <p className="whitespace-pre-wrap font-mono text-lg text-green-300">{part.text}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
             
             {/* Follow-up Form */}
-            <div className="px-3 pt-3 pb-1 border-t border-gray-700 bg-gray-900/20">
-                <form onSubmit={handleFollowUpSubmit} className="flex gap-2 items-center">
-                    <input
-                        type="text"
-                        value={followUpMessage}
-                        onChange={(e) => setFollowUpMessage(e.target.value)}
-                        placeholder="Ask a follow-up..."
-                        className="flex-1 bg-gray-800/70 text-gray-200 placeholder-gray-500 text-sm px-3 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={card.status === 'loading'}
-                    />
-                    <button 
-                        type="submit" 
-                        className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
-                        disabled={!followUpMessage.trim() || card.status === 'loading'}
-                    >
-                        <SendIcon className="w-5 h-5"/>
-                    </button>
-                </form>
-            </div>
+            {card.type === 'ai' && (
+                <div className="px-3 pt-3 pb-1 border-t border-gray-700 bg-gray-900/20">
+                    <form onSubmit={handleFollowUpSubmit} className="flex gap-2 items-center">
+                        <input
+                            type="text"
+                            value={followUpMessage}
+                            onChange={(e) => setFollowUpMessage(e.target.value)}
+                            placeholder="Ask a follow-up..."
+                            className="flex-1 bg-gray-800/70 text-gray-200 placeholder-gray-500 text-sm px-3 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            disabled={card.status === 'loading'}
+                        />
+                        <button 
+                            type="submit" 
+                            className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                            disabled={!followUpMessage.trim() || card.status === 'loading'}
+                        >
+                            <SendIcon className="w-5 h-5"/>
+                        </button>
+                    </form>
+                </div>
+            )}
         </div>
     );
 };

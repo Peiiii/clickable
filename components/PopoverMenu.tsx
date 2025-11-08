@@ -1,16 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { SelectionInfo, PredefinedAction } from '../types';
-import { TranslateIcon, SummarizeIcon, SendIcon, PlusIcon, TrashIcon } from './Icons';
+import { TranslateIcon, SummarizeIcon, SendIcon, PlusIcon, TrashIcon, HashtagIcon } from './Icons';
 
 interface PopoverMenuProps {
   selection: SelectionInfo;
-  onAction: (prompt: string, context: string) => void;
+  onAction: (prompt: string, context: string, icon?: React.ReactNode) => void;
+  onCodeAction: (label: string, context: string, result: string | number, icon?: React.ReactNode) => void;
   onClose: () => void;
 }
 
 const defaultActions: PredefinedAction[] = [
-  { id: 'translate-en', label: 'Translate (EN)', icon: <TranslateIcon className="w-4 h-4" />, prompt: 'Translate the following text to English', isCustom: false },
-  { id: 'summarize', label: 'Summarize', icon: <SummarizeIcon className="w-4 h-4" />, prompt: 'Summarize the following text concisely', isCustom: false },
+  { id: 'translate-en', type: 'ai', label: 'Translate (EN)', icon: <TranslateIcon className="w-4 h-4" />, prompt: 'Translate the following text to English', isCustom: false },
+  { id: 'summarize', type: 'ai', label: 'Summarize', icon: <SummarizeIcon className="w-4 h-4" />, prompt: 'Summarize the following text concisely', isCustom: false },
+  { 
+    id: 'word-count', 
+    type: 'code', 
+    label: 'Word Count', 
+    icon: <HashtagIcon className="w-4 h-4" />, 
+    handler: (text) => `${text.split(/\s+/).filter(Boolean).length} words`,
+    isCustom: false 
+  },
 ];
 
 const CUSTOM_ACTIONS_STORAGE_KEY = 'clickable-custom-actions';
@@ -36,7 +45,7 @@ const sortActions = (actions: PredefinedAction[], metadata: Record<string, { las
     });
 };
 
-export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, onClose }) => {
+export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, onCodeAction, onClose }) => {
   const [customPrompt, setCustomPrompt] = useState('');
   const [actions, setActions] = useState<PredefinedAction[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -86,11 +95,21 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
   };
 
   const handlePredefinedAction = (action: PredefinedAction, context: string) => {
-    const finalPrompt = customPrompt.trim()
-      ? `${action.prompt}. Additional instructions: ${customPrompt}`
-      : action.prompt;
-
-    onAction(finalPrompt, context);
+    if (action.type === 'code' && action.handler) {
+        const result = action.handler(context);
+        onCodeAction(action.label, context, result, action.icon);
+    } else if (action.type === 'ai' && action.prompt) {
+        const finalPrompt = customPrompt.trim()
+          ? `${action.prompt}. Additional instructions: ${customPrompt}`
+          : action.prompt;
+        onAction(finalPrompt, context, action.icon);
+    } else if (action.prompt) { // Fallback for old custom actions without a type
+        const finalPrompt = customPrompt.trim()
+            ? `${action.prompt}. Additional instructions: ${customPrompt}`
+            : action.prompt;
+        onAction(finalPrompt, context, action.icon);
+    }
+    
     setCustomPrompt('');
 
     // Update usage timestamp and re-sort
@@ -107,6 +126,7 @@ export const PopoverMenu: React.FC<PopoverMenuProps> = ({ selection, onAction, o
       id: crypto.randomUUID(),
       label: newActionLabel.trim(),
       prompt: newActionPrompt.trim(),
+      type: 'ai',
       isCustom: true,
     };
     

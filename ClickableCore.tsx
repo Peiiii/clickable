@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PopoverMenu } from './components/PopoverMenu';
 import { Sidebar } from './components/Sidebar';
 import { processChatStream } from './services/geminiService';
-import type { Card, SelectionInfo, ConversationPart } from './types';
+import type { Card, SelectionInfo } from './types';
 
 interface HighlightRect {
   top: number;
@@ -61,15 +61,17 @@ export const ClickableCore: React.FC = () => {
     };
   }, [handleMouseUp]);
   
-  const handleAction = async (prompt: string, context: string) => {
+  const handleAction = async (prompt: string, context: string, icon?: React.ReactNode) => {
     clearHighlight(); // Remove highlight when an action is taken
     
     const newCard: Card = {
         id: crypto.randomUUID(),
         prompt,
         context,
+        type: 'ai',
         status: 'loading',
         conversation: [],
+        icon,
     };
 
     setCards(prevCards => [newCard, ...prevCards]);
@@ -101,6 +103,26 @@ export const ClickableCore: React.FC = () => {
       // FIX: Use 'as const' to prevent TypeScript from widening the type to 'string'.
       setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, status: 'error' as const, conversation: [{ type: 'error' as const, text: errorMessage }] } : c));
     }
+  };
+
+  const handleCodeAction = (label: string, context: string, result: string | number, icon?: React.ReactNode) => {
+    clearHighlight();
+
+    const newCard: Card = {
+        id: crypto.randomUUID(),
+        prompt: label, // Use the label as the prompt/title
+        context,
+        type: 'code',
+        status: 'success',
+        conversation: [
+            { type: 'system', text: String(result) }
+        ],
+        icon: icon,
+    };
+
+    setCards(prevCards => [newCard, ...prevCards]);
+    setIsSidebarVisible(true);
+    setSelection(null);
   };
 
   const handleFollowUp = async (cardId: string, message: string) => {
@@ -185,7 +207,7 @@ export const ClickableCore: React.FC = () => {
         />
       ))}
       
-      {selection && <PopoverMenu selection={selection} onAction={handleAction} onClose={handleClosePopover} />}
+      {selection && <PopoverMenu selection={selection} onAction={handleAction} onCodeAction={handleCodeAction} onClose={handleClosePopover} />}
       
       <div data-no-select="true">
         <Sidebar cards={cards} onDeleteCard={handleDeleteCard} onFollowUp={handleFollowUp} isVisible={isSidebarVisible} onToggle={handleToggleSidebar}/>

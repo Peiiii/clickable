@@ -4,7 +4,7 @@ import { agentTools } from '../services/agentConfig';
 import { readPageContent, executeDomModificationCode, saveDomCodeAction } from '../services/toolService';
 import type { Card, PredefinedAction, ConversationPart } from '../types';
 import { CodeIcon, SparklesIcon } from '../components/Icons';
-import { providers } from '../services/ai/providers';
+import { activeProvider } from '../services/ai/activeProvider';
 
 export class ClickableManager {
 
@@ -69,8 +69,7 @@ export class ClickableManager {
     useClickableStore.getState().setSidebarVisible(true);
 
     try {
-      const provider = providers['gemini'].instance;
-      const generatedCode = await provider.generateCode(prompt, context);
+      const generatedCode = await activeProvider.generateCode(prompt, context);
       
       try {
         const func = new Function('context', generatedCode);
@@ -112,9 +111,8 @@ export class ClickableManager {
   runAgentTurn = async (card: Card) => {
     useClickableStore.getState().updateCard(card.id, { status: 'loading' });
     
-    const provider = providers['gemini'].instance;
     const history = [{ type: 'system' as const, text: card.context }, ...card.conversation];
-    const stream = provider.processAgentStream(history, agentTools);
+    const stream = activeProvider.processAgentStream(history, agentTools);
 
     let finalAiText = '';
     

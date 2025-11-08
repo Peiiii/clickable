@@ -1,13 +1,6 @@
-import { GoogleGenAI, Chat, Content, GenerateContentResponse, Tool, Type, Part } from "@google/genai";
+import { Chat, Content, GenerateContentResponse, Tool, Type, Part } from "@google/genai";
 import type { ConversationPart, PendingToolCall } from '../types';
-
-const apiKey = process.env.API_KEY;
-
-if (!apiKey) {
-  throw new Error("API_KEY environment variable not set.");
-}
-
-const ai = new GoogleGenAI({ apiKey });
+import { ai } from './geminiService';
 
 const agentTools: Tool[] = [
     {

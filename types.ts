@@ -49,6 +49,13 @@ export interface SelectionInfo {
   y: number;
 }
 
+export interface HighlightRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 export interface PredefinedAction {
   id: string;
   label: string;

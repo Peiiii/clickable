@@ -105,7 +105,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card }) => {
                 element.scrollTop = element.scrollHeight;
             }
         }
-    }, [card.conversation]);
+    }, [card.conversation, card.status]);
 
 
     const handleFollowUpSubmit = (e: React.FormEvent) => {
@@ -167,7 +167,6 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card }) => {
             {/* Conversation Area */}
             {isConversational && (
                 <div ref={scrollRef} className="p-3 text-sm text-gray-200 space-y-3 overflow-y-auto max-h-[400px]">
-                    {(card.conversation.length === 0 && card.status === 'loading') && <LoadingSpinner />}
                     {card.conversation.map((part, index) => (
                         <div key={index}>
                             {part.type === 'user' && (
@@ -200,6 +199,13 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card }) => {
                             )}
                         </div>
                     ))}
+                    {card.status === 'loading' && (!card.conversation.length || card.conversation[card.conversation.length - 1].type !== 'ai') && (
+                        <div>
+                            <div className="inline-block p-2 rounded-lg bg-blue-900/30 animate-fade-in-up">
+                                <LoadingSpinner />
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -256,7 +262,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card }) => {
                             onChange={(e) => setFollowUpMessage(e.target.value)}
                             placeholder={card.type === 'agent' ? 'Continue agent conversation...' : 'Ask a follow-up...'}
                             className="flex-1 bg-gray-800/70 text-gray-200 placeholder-gray-500 text-sm px-3 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            disabled={!!card.pendingToolCall}
+                            disabled={card.status === 'loading' || !!card.pendingToolCall}
                         />
                         <button 
                             type="submit" 

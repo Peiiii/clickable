@@ -49,7 +49,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
             </div>
 
             {/* Conversation Area */}
-            <div className="p-4 text-sm text-gray-200 space-y-4 flex-grow min-h-[100px]">
+            <div className="p-3 text-sm text-gray-200 space-y-3">
                 {card.conversation.length === 0 && card.status === 'loading' && <LoadingSpinner />}
                 {card.conversation.map((part, index) => (
                     <div key={index}>
@@ -80,7 +80,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ card, onDelete, onFollow
             </div>
             
             {/* Follow-up Form */}
-            <div className="p-3 border-t border-gray-700 bg-gray-900/20">
+            <div className="px-3 pt-3 pb-1 border-t border-gray-700 bg-gray-900/20">
                 <form onSubmit={handleFollowUpSubmit} className="flex gap-2 items-center">
                     <input
                         type="text"
